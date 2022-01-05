@@ -61,7 +61,7 @@ def main():
             {torch.nn.Conv2d, torch.nn.BatchNorm2d, torch.nn.InstanceNorm2d, torch.nn.LeakyReLU, torch.nn.ReLU},  # a set of layers to dynamically quantize
             dtype=torch.quint4)  # the target dtype for quantized weights
     else:
-
+        torch.backends.quantized.engine = 'qnnpack'
         seqModel.qconfig = torch.quantization.get_default_qconfig('qnnpack')
 
         # Fuse the activations to preceding layers, where applicable.
@@ -81,7 +81,7 @@ def main():
             img_L = util.uint2tensor4(img_L)
             img_L = img_L.to(device)
             model_fp32_prepared(img_L)
-            if index == 8:
+            if index == 1:
                 break
 
         # Convert the observed model to a quantized model. This does several things:

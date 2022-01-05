@@ -35,7 +35,7 @@ def pad(pad_type, padding):
 
 
 def get_valid_padding(kernel_size, dilation):
-    kernel_size = kernel_size + (kernel_size - 1) * (dilation - 1)
+    kernel_size = kernel_size +  (kernel_size - 1) * (dilation - 1)
     padding = (kernel_size - 1) // 2
     return padding
 
@@ -58,7 +58,7 @@ def activation(act_type, inplace=True, neg_slope=0.05, n_prelu=1):
     if act_type == 'relu':
         layer = nn.ReLU(inplace)
     elif act_type == 'lrelu':
-        layer = nn.LeakyReLU(neg_slope, inplace)
+        layer = nn.LeakyReLU(neg_slope, False)
     elif act_type == 'prelu':
         layer = nn.PReLU(num_parameters=n_prelu, init=neg_slope)
     else:
@@ -70,9 +70,10 @@ class ShortcutBlock(nn.Module):
     def __init__(self, submodule):
         super(ShortcutBlock, self).__init__()
         self.sub = submodule
+        self.skip_add = torch.nn.quantized.FloatFunctional()
 
     def forward(self, x):
-        output = x + self.sub(x)
+        output = self.skip_add.add(x, self.sub(x))
         return output
 
 def mean_channels(F):
@@ -113,6 +114,7 @@ class ESA(nn.Module):
         self.conv4 = conv(f, n_feats, kernel_size=1)
         self.sigmoid = nn.Sigmoid()
         self.relu = nn.ReLU(inplace=True)
+        self.skip_add = torch.nn.quantized.FloatFunctional()
 
     def forward(self, x):
         c1_ = (self.conv1(x))
@@ -123,10 +125,10 @@ class ESA(nn.Module):
         c3 = self.conv3_(c3)
         c3 = F.interpolate(c3, (x.size(2), x.size(3)), mode='bilinear', align_corners=False) 
         cf = self.conv_f(c1_)
-        c4 = self.conv4(c3+cf)
+        c4 = self.conv4(self.skip_add.add(c3,cf))
         m = self.sigmoid(c4)
         
-        return x * m
+        return self.skip_add.mul(x,m)
 
 
 class RFDB(nn.Module):
@@ -144,19 +146,20 @@ class RFDB(nn.Module):
         self.act = activation('lrelu', neg_slope=0.05)
         self.c5 = conv_layer(self.dc*4, in_channels, 1)
         self.esa = ESA(in_channels, nn.Conv2d)
+        self.skip_add = torch.nn.quantized.FloatFunctional()
 
     def forward(self, input):
         distilled_c1 = self.act(self.c1_d(input))
         r_c1 = (self.c1_r(input))
-        r_c1 = self.act(r_c1+input)
+        r_c1 = self.act(self.skip_add.add(r_c1,input))
 
         distilled_c2 = self.act(self.c2_d(r_c1))
         r_c2 = (self.c2_r(r_c1))
-        r_c2 = self.act(r_c2+r_c1)
+        r_c2 = self.act(self.skip_add.add(r_c2,r_c1))
 
         distilled_c3 = self.act(self.c3_d(r_c2))
         r_c3 = (self.c3_r(r_c2))
-        r_c3 = self.act(r_c3+r_c2)
+        r_c3 = self.act(self.skip_add.add(r_c3,r_c2))
 
         r_c4 = self.act(self.c4(r_c3))
 
