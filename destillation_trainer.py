@@ -19,7 +19,7 @@ def train():
     logger = logging.getLogger('AIM-track')
     testsets = 'DIV2K'
     testset_L = 'DIV2K_valid_LR_bicubic'
-    trainset_L = 'DIV2K_valid_LR_bicubic'
+    trainset_L = 'DIV2K_train_LR_bicubic'
     #testset_L = 'DIV2K_test_LR_bicubic'
     real_L = 'DIV2K_valid_HR'
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -65,7 +65,7 @@ def eval(model, L_folder, H_folder, device):
         img_L = util.imread_uint(img, n_channels=3)
         img_L = util.uint2tensor4(img_L)
         img_L = img_L.to(device)
-        out = model(img_L)
+        img_E = model(img_L)
         img_E = util.tensor2uint(img_E)
     for img in tqdm(util.get_image_paths(H_folder)):
         img_H = util.imread_uint(img, n_channels=3)
