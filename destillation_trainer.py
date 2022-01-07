@@ -67,6 +67,7 @@ def eval(model, L_folder, H_folder, device):
         img_L = img_L.to(device)
         img_E = model(img_L)
         img_E = util.tensor2uint(img_E)
+        img_SR.append(img_E)
     for img in tqdm(util.get_image_paths(H_folder)):
         img_H = util.imread_uint(img, n_channels=3)
         psnr.append(util.calculate_psnr(img_SR[idx], img_H))
