@@ -3,20 +3,20 @@ import torch.nn as nn
 import block as B
 
 def make_model(args, parent=False):
-    model = RFDN()
+    model = RFDNsmall()
     return model
 
 
-class RFDN(nn.Module):
+class RFDNsmall(nn.Module):
     def __init__(self, in_nc=3, nf=50, num_modules=4, out_nc=3, upscale=4):
-        super(RFDN, self).__init__()
+        super(RFDNsmall, self).__init__()
 
         self.fea_conv = B.conv_layer(in_nc, nf, kernel_size=3)
 
-        self.B1 = B.RFDB(in_channels=nf)
-        self.B2 = B.RFDB(in_channels=nf)
-        self.B3 = B.RFDB(in_channels=nf)
-        self.B4 = B.RFDB(in_channels=nf)
+        self.B1 = B.RFDBsmall(in_channels=nf)
+        self.B2 = B.RFDBsmall(in_channels=nf)
+        self.B3 = B.RFDBsmall(in_channels=nf)
+        self.B4 = B.RFDBsmall(in_channels=nf)
         self.c = B.conv_block(nf * num_modules, nf, kernel_size=1, act_type='lrelu')
 
         self.LR_conv = B.conv_layer(nf, nf, kernel_size=3)
