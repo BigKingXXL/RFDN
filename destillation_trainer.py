@@ -1,4 +1,4 @@
-import os.path
+import os
 import logging
 import time
 from collections import OrderedDict
@@ -12,9 +12,12 @@ from RFDN import RFDN
 from RFDNsmall import RFDNsmall
 from tqdm import tqdm
 import argparse
+import datetime
 
 
 def train():
+    start_date = datetime.datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+    os.makedirs(start_date, exist_ok=True)
     utils_logger.logger_info('AIM-track', log_path='AIM-track.log')
     logger = logging.getLogger('AIM-track')
     testsets = 'DIV2K'
@@ -41,7 +44,7 @@ def train():
     loss = torch.nn.MSELoss()
     lr =0.0005
     optimizer = torch.optim.Adam(destilled_model.parameters(), lr=lr)
-    epochs = 1
+    epochs = 100
     for i in range(epochs):
         print("Epoch: ", i)
         for img in tqdm(util.get_image_paths(TRAIN_folder)):
@@ -54,7 +57,8 @@ def train():
             sum_loss = sum([loss(el1, el2) for el1, el2 in zip(actual_out, destilled_out)])
             sum_loss.backward()
             optimizer.step()
-        eval(destilled_model, L_folder, H_folder, device)
+        score = eval(destilled_model, L_folder, H_folder, device)
+        torch.save(destilled_model.state_dict(), os.path.join(start_date, f'epoch-{i}-{score:.3f}.pth'))
 
 
 def eval(model, L_folder, H_folder, device):
@@ -73,7 +77,9 @@ def eval(model, L_folder, H_folder, device):
         psnr.append(util.calculate_psnr(img_SR[idx], img_H))
         idx += 1
     del img_SR
-    print('------> Average psnr of ({}) is : {:.6f} dB'.format(L_folder, sum(psnr)/len(psnr)))
+    score = sum(psnr)/len(psnr)
+    print('------> Average psnr of ({}) is : {:.6f} dB'.format(L_folder, score))
+    return score
 
 if __name__ == '__main__':
     train()
